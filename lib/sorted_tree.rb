@@ -375,18 +375,34 @@ module SortedTree
     end
     alias inspect to_s
 
-    def bound(from, to = from)
-      unless block_given?
-        sz = lambda{@tree.bound_size(from, to, true)}
-        return Enumerator.new(sz){|y|
-          bound(from, to){|k, v| y.yield k, v}
-        }
+    if (Enumerator.instance_method(:size) rescue false)
+      def bound(from, to = from)
+        unless block_given?
+          sz = lambda{@tree.bound_size(from, to, true)}
+          return Enumerator.new(sz){|y|
+            bound(from, to){|k, v| y.yield k, v}
+          }
+        end
+        begin
+          @iter_lev += 1
+          @tree.bound(from, to, true){|k, v| yield k, v}
+        ensure
+          @iter_lev -= 1
+        end
       end
-      begin
-        @iter_lev += 1
-        @tree.bound(from, to, true){|k, v| yield k, v}
-      ensure
-        @iter_lev -= 1
+    else
+      def bound(from, to = from)
+        unless block_given?
+          return Enumerator.new{|y|
+            bound(from, to){|k, v| y.yield k, v}
+          }
+        end
+        begin
+          @iter_lev += 1
+          @tree.bound(from, to, true){|k, v| yield k, v}
+        ensure
+          @iter_lev -= 1
+        end
       end
     end
 
