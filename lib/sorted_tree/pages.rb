@@ -30,36 +30,43 @@ module SortedTree
 
     def put(k, v)
       _fix_root
-      leaf, pos = last_le(k, true)
+      leaf = leaf_le_fix(k)
       if leaf == nil
         @first_leaf.insert_kv(0, k, v)
         @size += 1
-      elsif pos >= 0 && pos < leaf.amount && cmp_key(leaf.key_at(pos), k) == 0
-        leaf.set_value(pos, v)
       else
-        leaf.insert_kv(pos+1, k, v)
-        @size += 1
+        pos = _page_first_ge(leaf, k)
+        if pos < leaf.amount && cmp_key(leaf.key_at(pos), k) == 0
+          leaf.set_value(pos, v)
+        else
+          leaf.insert_kv(pos, k, v)
+          @size += 1
+        end
       end
     end
 
     def delete(k, default = nil)
       _fix_root
-      leaf, pos = last_le(k, true)
-      if leaf != nil && pos >= 0 && pos < leaf.amount && cmp_key(leaf.key_at(pos), k) == 0
-        @size -= 1
-        leaf.delete_kv(pos)
-      else
-        default
+      leaf = leaf_le_fix(k)
+      if leaf != nil
+        pos = _page_first_ge(leaf, k)
+        if pos < leaf.amount && cmp_key(leaf.key_at(pos), k) == 0
+          @size -= 1
+          return leaf.delete_kv(pos)
+        end
       end
+      default
     end
 
     def get(k, default = nil)
-      leaf, pos = last_le(k, false)
-      if leaf && cmp_key(leaf.key_at(pos), k) == 0
-        leaf.value_at(pos)
-      else
-        default
+      leaf = leaf_le(k)
+      if leaf
+        pos = _page_first_ge(leaf, k)
+        if cmp_key(leaf.key_at(pos), k) == 0
+          return leaf.value_at(pos)
+        end
       end
+      default
     end
 
     def keys
@@ -217,6 +224,28 @@ module SortedTree
       page = @root
       while page.inner?
         page = page.child(page)
+      end
+      page
+    end
+
+    def leaf_le(k)
+      page = @root
+      while page.inner?
+        pos = _page_first_gt(page, k)
+        return nil if pos == 0
+        page = page.child(pos - 1)
+      end
+      page
+    end
+
+    def leaf_le_fix(k)
+      page = @root
+      while page.inner?
+        pos = _page_first_gt(page, k)
+        return nil if pos == 0
+        pos -= 1
+        child = page.child(pos)
+        page = fix_page(page, pos, child, k, true)
       end
       page
     end
