@@ -62,7 +62,7 @@ module SortedTree
       leaf = leaf_le(k)
       if leaf
         pos = _page_first_ge(leaf, k)
-        if cmp_key(leaf.key_at(pos), k) == 0
+        if pos < leaf.amount && cmp_key(leaf.key_at(pos), k) == 0
           return leaf.value_at(pos)
         end
       end
