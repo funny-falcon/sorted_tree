@@ -176,8 +176,10 @@ module SortedTree
     end
 
     def upper_bound(key)
-      it = last_le(key, false)
-      it[0] && it[0].item_at(it[1])
+      leaf = leaf_le(key)
+      return nil unless leaf
+      pos = _page_first_gt(leaf, key)
+      pos > 0 ? leaf.item_at(pos-1) : nil
     end
 
     def lower_bound(key)
@@ -200,7 +202,7 @@ module SortedTree
         res = @first_leaf.item_at(0)
         @first_leaf.delete_kv(0)
         if @first_leaf.amount < MIN
-          last_lt(@first_leaf.key_at(0), :fix)
+          leaf_le_fix(@first_leaf.key_at(0))
         end
         @size -= 1
         res
@@ -213,7 +215,7 @@ module SortedTree
         res = page.item_at(page.amount-1)
         page.delete_kv(page.amount-1)
         if page.amount < MIN
-          last_le(page.key_at(page.amount-1), :fix)
+          leaf_le_fix(page.key_at(page.amount-1))
         end
         @size -= 1
         res
@@ -248,24 +250,6 @@ module SortedTree
         page = fix_page(page, pos, child, k, true)
       end
       page
-    end
-
-    def last_le(k, fixing)
-      page = @root
-      while page.inner?
-        pos = _page_first_gt(page, k)
-        return [nil,nil] if pos == 0
-        pos -= 1
-        child = page.child(pos)
-        if fixing
-          child = fix_page(page, pos, child, k, true)
-        end
-        page = child
-      end
-      if fixing != :fix
-        pos = _page_first_gt(page, k) - 1
-        pos >= 0 ? [page, pos] : [nil, nil]
-      end
     end
 
     def last_lt(k, fixing)
@@ -352,7 +336,7 @@ module SortedTree
         nxt.prev = leaf
         last_inner << nxt
         if last_inner.amount > MAX
-          last_le(nxt.key_at(0), :fix)
+          leaf_le_fix(nxt.key_at(0))
           if last_inner.next
             last_inner = last_inner.next
           end
